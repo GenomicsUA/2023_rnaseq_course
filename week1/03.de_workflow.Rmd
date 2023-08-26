@@ -1,0 +1,469 @@
+---
+title: "DE analysis"
+author: "Serhiy Naumenko"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    code_folding: hide
+    df_print: paged
+    highlights: pygments
+    number_sections: yes
+    self_contained: yes
+    theme: default
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+# Overview
+- Schlotawa data reanalysis for the RNA-seq course
+
+```{r include = FALSE}
+### Bioconductor and CRAN libraries used
+library(tidyverse)
+library(readr)
+library(tidyr)
+library(stringr)
+library(AnnotationHub)
+library(ensembldb)
+library(RColorBrewer)
+
+library(DESeq2)
+library(pheatmap)
+library(DEGreport)
+library(tximport)
+library(ggplot2)
+library(ggrepel)
+library(knitr)
+
+library(ggplotify)
+library(writexl)
+
+ggplot2::theme_set(theme_light(base_size = 14))
+
+opts_chunk[["set"]](
+    cache = FALSE,
+    dev = c("png", "pdf"),
+    error = TRUE,
+    highlight = TRUE,
+    message = FALSE,
+    prompt = FALSE,
+    tidy = FALSE,
+    warning = FALSE)
+
+```
+
+
+# Load Counts
+```{r}
+# raw counts downloaded from GEO
+# https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE205555
+
+counts_csv <- "tables/counts.csv"
+counts_tpm_csv <- "tables/counts_tpm.csv"
+if (file.exists(counts_csv)){
+    counts <- read_csv(counts_csv) %>% column_to_rownames("ensembl_gene_id")
+    counts_tpm <- read_csv(counts_tpm_csv)
+}else{
+    files <- fs::dir_ls(path = "../data/input_geo", glob = "*exonCounts.txt")
+    counts <- readr::read_tsv(files, id = "path", col_names = c("ensembl_gene_id", "raw_counts"))
+    df_split <- str_split_fixed(counts$path, "_", 13) %>% as.data.frame()
+    counts$sample <- df_split$V2 
+    counts <- counts %>% 
+        mutate(sample = str_replace(sample, "geo/", "")) %>% 
+        dplyr::relocate(sample) %>% dplyr::select(-path) %>% 
+        pivot_wider(names_from = "sample", values_from = "raw_counts")
+        
+    
+    gene_length <- read_tsv("tables/GC_lengths.tsv") %>% arrange(ensembl_gene_id)
+    counts <- counts %>% arrange(ensembl_gene_id)
+    gene_ids <- intersect(counts$ensembl_gene_id, gene_length$ensembl_gene_id)
+    
+    v_len <- gene_length %>% dplyr::filter(ensembl_gene_id %in% gene_ids)
+    counts <- counts %>% dplyr::filter(ensembl_gene_id %in% gene_ids)
+    
+    write_csv(counts, counts_csv)
+    counts <- counts %>% column_to_rownames("ensembl_gene_id")
+    
+    x <- counts / v_len$Length
+    counts_tpm <- t(t(x) * 1e6 / colSums(x)) %>% as.data.frame() %>% round(2) %>% 
+      rownames_to_column("ensembl_gene_id") %>% write_csv(counts_tpm_csv)
+}
+```
+
+# Load metadata
+```{r}
+# Load the data and metadata
+metadata <- read_csv("tables/metadata.csv") %>% column_to_rownames(var = "sample_id") 
+
+protein_coding_genes <- read_csv("tables/ensembl_w_description.protein_coding.csv")
+```
+
+```{r include = FALSE}
+annotation_file <- "tables/ensembl94_hg38_annotations.txt"
+gene_symbol_file <- "tables/gene_symbol.txt"
+if (file.exists(annotation_file)){
+    hsdb <- read_tsv(annotation_file)
+    gene_symbol <- read_tsv(gene_symbol_file)
+}else{
+    # Connect to AnnotationHub
+    ah <- AnnotationHub()
+    # Query AnnotationHub
+    hs_ens <- query(ah, c("Homo sapiens", "EnsDb"))
+
+    # Get Ensembl94 - used in bcbio
+    hs_ens <- hs_ens[["AH64923"]]
+
+    # Extract gene-level information
+    txdb <- transcripts(hs_ens,
+                    return.type = "data.frame") %>% 
+    dplyr::select(tx_id, gene_id)  
+
+    genedb <- genes(hs_ens, 
+              return.type = "data.frame") %>% 
+    dplyr::select(gene_id, gene_name, symbol)  
+
+    gene_symbol <- genedb %>% dplyr::select(gene_id, symbol)
+    write_tsv(gene_symbol, gene_symbol_file)
+
+    hsdb <- inner_join(txdb, genedb)
+    write.table(hsdb, 
+            file = annotation_file , 
+            sep = "\t", 
+            row.names = F, 
+            quote = F)
+}
+```
+
+```{r include = FALSE}
+# Read in  a tx2gene file with transcript identifiers in the first column and gene identifiers in the second column
+tx2gene <- hsdb[, c("tx_id", "gene_id")]
+
+```
+
+# Run DESeq2
+```
+estimating size factors
+estimating dispersions
+gene-wise dispersion estimates
+mean-dispersion relationship
+final dispersion estimates
+fitting model and testing
+```
+
+* [Estimating size factors and count normalization](https://hbctraining.github.io/DGE_workshop_salmon/lessons/02_DGE_count_normalization.html)
+* [Gene-wise dispersions](https://hbctraining.github.io/DGE_workshop_salmon/lessons/04_DGE_DESeq2_analysis.html)
+* [Mean-dispersion(variance) relationship and the Negative Binomial Model](https://hbctraining.github.io/DGE_workshop_salmon/lessons/01_DGE_setup_and_overview.html#modeling-count-data)
+* [Model fitting and hypothesis testing](https://hbctraining.github.io/DGE_workshop_salmon/lessons/05_DGE_DESeq2_analysis2.html)
+
+
+# Run DEseq2 Wald test
+*Here we subset protein coding genes*.
+```{r include = FALSE}
+## Create DESeq2Dataset object
+dds_file <- "../data/dds.RDS"
+if (file.exists(dds_file)){
+    dds <- readRDS(dds_file)
+}else{
+    dds <- DESeqDataSetFromMatrix(countData = counts, 
+                              colData = metadata, 
+                              design = ~treatment)
+
+    dds$fibroblast_line <- as.factor(dds$fibroblast_line)
+    dds$treatment <- as.factor(dds$treatment)
+    dds$treatment <- relevel(dds$treatment, ref = "DMSO")
+
+    design(dds) <- formula(~ treatment + fibroblast_line)
+
+    # subset protein-coding genes
+    pc_genes <- intersect(protein_coding_genes$ensembl_gene_id, row.names(dds))
+    dds <- dds[pc_genes,]
+    # 10471 genes left
+    keep <- rowMeans(counts(dds)) >= 30
+    dds <- dds[keep, ]
+
+    # Run DESeq2
+    dds <- DESeq(dds)
+    saveRDS(dds, dds_file)
+}
+
+# return mean counts for a group of sample in a column
+get_counts_for_samples <- function(ctpm, samples, column_name){
+    tpm_counts <- ctpm %>%
+        column_to_rownames("ensembl_gene_id") %>% 
+        dplyr::select(any_of(samples)) %>% 
+        rowMeans() %>%
+        as.data.frame() %>%
+        round(2) %>%
+        rownames_to_column("ensembl_gene_id") 
+    
+    colnames(tpm_counts) <- c("ensembl_gene_id", "tpm")
+    
+    tpm_counts <- tpm_counts %>% 
+        dplyr::mutate("{column_name}" := round(tpm, 2)) %>% 
+        dplyr::select(-tpm)
+    
+    return(tpm_counts)
+}
+
+# get rid of excess precision
+comb_de_result_table <- function(results){
+    results <- results %>%
+        mutate(baseMean = round(baseMean, 2),
+               log2FoldChange = round(log2FoldChange, 2),
+               lfcSE = round(lfcSE, 2),
+               stat = round(stat, 2),
+               pvalue = format(pvalue, scientific = TRUE, digits = 2),
+               padj = format(padj, scientific = TRUE, digits = 2))
+    return(results)
+}
+
+```
+
+\newpage
+
+# DEGreport QC
+## Size factor QC
+```{r fig.width=10, fig.height = 10}
+counts <- counts(dds, normalized = TRUE)
+design <- as.data.frame(colData(dds))
+degCheckFactors(counts)
+
+```
+
+
+# Mean-Variance QC plots
+
+## treatment
+```{r fig.width=15, fig.height = 15}
+res <- results(dds)
+degQC(counts, design[["treatment"]], pvalue = res[["pvalue"]])
+```
+
+\newpage
+## fibroblast_line
+```{r fig.width = 15, fig.height = 15}
+degQC(counts, design[["fibroblast_line"]], pvalue = res[["pvalue"]])
+```
+
+
+\newpage
+# Covariates effect on count data
+```{r, fig.width = 10, fig.height = 10}
+mdata <- colData(dds) %>%  as.data.frame() %>% 
+  dplyr::select(treatment, fibroblast_line)
+resCov <- degCovariates(log2(counts(dds)+0.5), mdata)
+```
+
+
+\newpage
+
+# Covariates correlation with metrics
+```{r}
+cor <- degCorCov(mdata)
+```
+
+
+# Sample-level QC analysis 
+```{r include = FALSE}
+### Transform counts for data visualization (unsupervised analysis)
+rld_file <- "../data/rld.RDS"
+if (file.exists(rld_file)){
+    rld <- readRDS(rld_file)
+}else{
+    rld <- rlog(dds, blind = TRUE)
+    saveRDS(rld, rld_file)
+}
+class(rld) # what type of object is this
+
+# we also need just a matrix of transformed counts
+rld_mat <- assay(rld)
+```
+
+## PCA - treatment
+```{r, fig.width = 10, fig.height = 10}
+# Use the DESeq2 function
+plotPCA(rld, intgroup = c("treatment")) + geom_label_repel(aes(label = name)) + theme_bw()
+```
+
+
+\newpage
+## PCA - fibro line
+```{r, fig.width = 10, fig.height = 10}
+# Use the DESeq2 function
+plotPCA(rld, intgroup = c("fibroblast_line"))  + geom_label_repel(aes(label = name))
+```
+\newpage
+
+# Inter-correlation analysis
+
+```{r, fig.width = 20, fig.height = 20}
+# Correlation matrix
+rld_cor <- cor(rld_mat)
+
+# Create annotation file for samples
+annotation <- metadata[, c("treatment", "fibroblast_line")]
+
+# Change colors
+heat.colors <- brewer.pal(6, "Blues")
+
+# Plot heatmap
+pheatmap(rld_cor, 
+         annotation = annotation, 
+         border = NA,
+         fontsize = 20)
+```
+
+\newpage
+
+##  top 1000 variable genes
+```{r, fig.width = 20, fig.height = 20}
+rv <- rowVars(rld_mat)
+rv <- order(rv, decreasing = TRUE) %>% head(1000)
+rld_mat_1000 <- rld_mat[rv,]
+annotation <- metadata[, c("treatment", "fibroblast_line")]
+
+# Change colors
+heat.colors <- brewer.pal(6, "Blues")
+rld_cor <- cor(rld_mat_1000)
+# Plot heatmap
+pheatmap(rld_cor, 
+         annotation = annotation, 
+         border = NA,
+         fontsize = 20)
+```
+
+
+
+\newpage
+# PCA: Treatment Adapalene vs DMSO
+```{r, fig.width = 15, wig.height = 15}
+rld.sub <- rld[ , rld$treatment %in% c("adapalene", "DMSO") ]
+plotPCA(rld.sub, intgroup = c("treatment")) + geom_label_repel(aes(label = name)) + theme_bw()
+
+```
+
+\newpage
+# PCA: Treatment Adapalene vs DMSO
+```{r, fig.width = 15, fig.height = 15}
+plotPCA(rld.sub, intgroup = c("fibroblast_line"))  + geom_label_repel(aes(label = name)) + theme_bw()
+
+```
+
+
+
+
+```{r}
+contrast <- c("treatment", "adapalene", "DMSO")
+resTreatment <- results(dds, contrast = contrast, alpha = 0.05)
+length(which(resTreatment$padj < 0.05))
+
+# Add annotations
+resTreatment_tb <- resTreatment %>%
+  data.frame() %>% 
+  rownames_to_column(var = "gene") %>% 
+  as_tibble() %>% 
+  left_join(gene_symbol, by = c("gene" = "gene_id"))
+
+resTreatment_tb_significant <- dplyr::filter(resTreatment_tb, padj < 0.05) %>%  
+                        dplyr::filter(abs(log2FoldChange) > 1) %>% 
+                        comb_de_result_table()
+
+samples_control <- metadata %>% rownames_to_column("ensembl_gene_id") %>% 
+         dplyr::filter(treatment == "DMSO") %>% pull("ensembl_gene_id") 
+```
+
+\newpage
+```{r}
+tpm_control <- get_counts_for_samples(counts_tpm, samples_control, "DMSO_mean_tpm")
+
+samples_effect <- metadata %>% dplyr::filter(treatment == "adapalene") %>% row.names() 
+tpm_effect <- get_counts_for_samples(counts_tpm, samples_effect, "adapalene_tpm")
+
+tpm_counts <- tpm_effect %>% 
+              left_join(tpm_control,
+                        by = c("ensembl_gene_id" = "ensembl_gene_id"))
+
+resTreatment_tb_significant <- resTreatment_tb_significant %>% 
+          left_join(tpm_counts, by = c("gene" = "ensembl_gene_id")) %>%
+          arrange(log2FoldChange)
+
+write_xlsx(list(T2.DE_adapalene = resTreatment_tb_significant), 
+          "tables/T2.DE_adapalene.xlsx")
+
+# Separate into up and down-regulated gene sets
+sigTreatment_up <- rownames(resTreatment)[which(resTreatment$padj < 0.01 & resTreatment$log2FoldChange > 0)]
+sigTreatment_down <- rownames(resTreatment)[which(resTreatment$padj < 0.01 & resTreatment$log2FoldChange < 0)]
+```
+
+
+
+\newpage
+
+# Visualization
+
+*Gene example*
+
+```{r, fig.width=15, fig.height = 15}
+d <- plotCounts(dds, 
+                gene = "ENSG00000198846", 
+                intgroup = "treatment", 
+                returnData = TRUE)
+
+ggplot(d, aes(x = treatment, y = count, color = treatment)) + 
+     geom_point(position = position_jitter(w = 0.1, h = 0)) +
+     geom_text_repel(aes(label = rownames(d))) + 
+     theme_bw(base_size = 10) +
+     ggtitle("TOX") +
+     theme(plot.title = element_text(hjust = 0.5)) +
+     scale_y_log10()
+     
+```
+
+
+\newpage
+# Heatmaps
+```{r, fig.width = 20, fig.height = 30}
+# Create a matrix of normalized expression
+sig_up <- resTreatment_tb_significant %>% arrange(-log2FoldChange) %>% head(50) %>% pull(gene)
+sig_down <- resTreatment_tb_significant %>% arrange(log2FoldChange) %>% head(50) %>% pull(gene)
+sig <- c(sig_up, sig_down)
+
+row_annotation <- gene_symbol %>% 
+                    as_tibble() %>% 
+                    dplyr::filter(gene_id %in% sig)
+
+plotmat <- counts_tpm %>% column_to_rownames("ensembl_gene_id") %>% 
+     dplyr::select(any_of(c(samples_control, samples_effect)))
+                                                                                  
+plotmat <- plotmat[c(sig_up, sig_down),] %>% as.data.frame() %>% 
+          rownames_to_column(var = "ensembl_gene_id") %>% 
+          left_join(gene_symbol, by = c("ensembl_gene_id" = "gene_id")) %>% 
+          drop_na(symbol)
+
+plotmat$ensembl_gene_id <- NULL
+
+plotmat <- plotmat %>% column_to_rownames(var = "symbol") %>% as.matrix()
+
+# Color palette
+heat.colors <- brewer.pal(6, "YlOrRd")
+
+# Plot heatmap
+# color = heat.colors,
+pheatmap(plotmat, 
+         scale = "row", 
+         show_rownames = TRUE,
+         border = FALSE,
+         annotation = metadata[, c("treatment"), drop = FALSE],
+         main = "Top 50 Up- and Down- regulated genes in treatment: adapalene vs DMSO",
+         fontsize = 20)
+
+```
+
+# R session
+```{r}
+sessionInfo()
+```
