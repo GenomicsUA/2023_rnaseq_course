@@ -1,5 +1,5 @@
 ---
-title: "DE analysis"
+title: "RNA-seq course- week1"
 author: "Serhiy Naumenko"
 date: "`r Sys.Date()`"
 output:
