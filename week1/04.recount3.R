@@ -24,3 +24,4 @@ colSums(assay(rse_gene_MAP, "TPM")) / 1e6
 
 tpms <- assays(rse_gene_MAP)$TPM %>% as.data.frame()
 raw_counts <- assays(rse_gene_MAP)$raw_counts %>% as.data.frame()
+

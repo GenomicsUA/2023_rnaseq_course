@@ -27,20 +27,20 @@ library(tidyverse)
 library(readr)
 library(tidyr)
 library(stringr)
-library(AnnotationHub)
-library(ensembldb)
+library(AnnotationHub) # bioc
+library(ensembldb) # bioc
 library(RColorBrewer)
 
-library(DESeq2)
-library(pheatmap)
-library(DEGreport)
-library(tximport)
-library(ggplot2)
-library(ggrepel)
+library(DESeq2) # bioc
+library(pheatmap) # R
+library(DEGreport) # ?
+library(tximport) # ?
+library(ggplot2) 
+library(ggrepel) #?
 library(knitr)
 
-library(ggplotify)
-library(writexl)
+library(ggplotify)#?
+library(writexl) #?
 
 ggplot2::theme_set(theme_light(base_size = 14))
 
@@ -64,6 +64,7 @@ opts_chunk[["set"]](
 
 counts_csv <- "tables/counts.csv"
 counts_tpm_csv <- "tables/counts_tpm.csv"
+
 if (file.exists(counts_csv)){
     counts <- read_csv(counts_csv) %>% column_to_rownames("ensembl_gene_id")
     counts_tpm <- read_csv(counts_tpm_csv)
