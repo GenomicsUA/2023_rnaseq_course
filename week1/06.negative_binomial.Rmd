@@ -1,0 +1,141 @@
+---
+title: "RNA-seq course- week1"
+author: "Serhiy Naumenko"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: yes
+    keep_tex: yes
+    latex_engine: xelatex
+    number_sections: true
+  html_document:
+    code_folding: hide
+    df_print: paged
+    highlights: pygments
+    number_sections: yes
+    self_contained: yes
+    theme: default
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+mainfont: Tempora
+fontsize: 10pt
+urlcolor: blue
+---
+
+# Overview
+- Negative binomial distribution
+- Від'ємний біноміальний розподіл
+- https://rpubs.com/mpfoley73/458738
+- https://uk.wikipedia.org/wiki/Від'ємний_біноміальний_розподіл 
+- https://www.youtube.com/watch?v=lJw6Ku_jQkM 
+
+
+
+```{r include = FALSE}
+library(tidyverse)
+library(mosaic)
+library(knitr)
+
+
+set.seed(1)
+
+
+ggplot2::theme_set(theme_light(base_size = 14))
+
+opts_chunk[["set"]](
+    cache = FALSE,
+    dev = c("png", "pdf"),
+    error = TRUE,
+    highlight = TRUE,
+    message = FALSE,
+    prompt = FALSE,
+    tidy = FALSE,
+    warning = FALSE)
+
+```
+
+\newpage
+
+```{r}
+r <-  3 # n success
+p <-  0.20 # success
+n <-  7 - r # failures
+# exact
+dnbinom(x = n, size = r, prob = p)
+```
+
+```{r}
+# simulated
+mean(rnbinom(n = 10000, size = r, prob = p) == n)
+```
+
+\newpage
+
+# Кумулятивна ймовірність 
+```{r}
+
+r <- 3
+p <- 0.20
+
+sim_nb <- data.frame(x = 0:20, prob = dnbinom(x = 0:20, size = r, prob = p)) %>%
+  mutate(Failures = ifelse(x == n, n, "other")) 
+
+# NB: factor
+
+sim_nb %>%
+ggplot(aes(x = factor(x), y = prob, fill = Failures)) +
+  geom_col() +
+  geom_text(
+    aes(label = round(prob,2), y = prob + 0.01),
+    position = position_dodge(0.9),
+    size = 3,
+    vjust = 0
+  ) +
+  labs(title = "Probability of r = 3 Successes in X = 7 Trials",
+       subtitle = "NB(3,.2)",
+       x = "Failed Trials (X - r)",
+       y = "Probability")  +
+  geom_vline(xintercept = r*(1-p)/p, linetype = "dashed", color = "red")
+
+```
+# Expected number of trials
+```{r}
+r <-  3 # success
+p <-  0.20
+# mean
+# exact
+r / p
+```
+* Mean = `r r*(1-p)/p``
+* Var = `r r * (1 - p) / p^2`
+
+# Simulated
+```{r}
+var(rnbinom(n = 100000, size = r, prob = p))
+```
+
+# Cumulative probability
+```{r}
+data.frame(x = 1:20, 
+           pmf = dnbinom(x = 1:20, size = r, prob = p),
+           cdf = pnbinom(q = 1:20, size = r, prob = p, lower.tail = TRUE)) %>%
+ggplot(aes(x = factor(x), y = cdf)) +
+  geom_col() +
+  geom_text(
+    aes(label = round(cdf,2), y = cdf + 0.01),
+    position = position_dodge(0.9),
+    size = 3,
+    vjust = 0
+  ) +
+  labs(title = "Cumulative Probability of X = x failed trials to achieve 3rd success",
+       subtitle = "NB(3,.2)",
+       x = "Failed Trials (x)",
+       y = "probability") 
+```
+
+# sessionInfo()
+```{r}
+sessionInfo()
+```

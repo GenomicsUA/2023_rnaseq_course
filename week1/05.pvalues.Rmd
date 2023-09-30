@@ -37,9 +37,7 @@ library(tidyverse)
 library(mosaic)
 library(knitr)
 
-
 set.seed(1)
-
 
 ggplot2::theme_set(theme_light(base_size = 14))
 
