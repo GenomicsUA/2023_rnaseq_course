@@ -17,7 +17,7 @@ output:
       collapsed: yes
       smooth_scroll: yes
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ## Setup
@@ -90,20 +90,25 @@ pairsplot(pca_calculated, colby = "treatment")
 ```
 
 ```{r}
-
+plotloadings(pca_calculated, components = getComponents(pca_calculated,
+             c(1, 2, 5)), rangeRetain = 0.1, drawConnectors = TRUE)
 ```
 
 
 ## Hierarchical clustering
 
 ```{r}
+matrix_correlations <- cor(counts_vst_filtered)
 
+f1 <- pheatmap(matrix_correlations, annotation = metadata_table, show_rownames = TRUE,
+         show_colnames = FALSE)
 ```
 
 ## Outputs
 
 ```{r}
 ggsave("03_outputs/02_PCA.png", F1, device = "png")
-ggsave("03_outputs/02_clustering.png", F2, device = "png")
+ggsave("03_outputs/02_clustering.png", f1, device = "png")
+ggsave()
 ```
 
