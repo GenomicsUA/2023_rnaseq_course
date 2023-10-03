@@ -28,12 +28,12 @@ setwd("C:/Users/opetrenko/Documents/Rstudio/2023_rnaseq_course/week2")
 ```
 
 ```{r install-libraries}
-#if (!require("BiocManager", quietly = TRUE))
-#    install.packages("BiocManager")
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
 
-#BiocManager::install("org.Hs.eg.db")
-#BiocManager::install("biomaRt")
-#install.packages("tidyverse")
+BiocManager::install("org.Hs.eg.db")
+BiocManager::install("biomaRt")
+install.packages("tidyverse")
 ```
 
 ```{r load-libraries-and-files}
@@ -47,17 +47,42 @@ count_matrix <- read.csv("01_datasets/counts.csv")
 metadata_table <- counts <- read.csv("01_datasets/metadata.csv")
 
 ```
+```{r}
+metadata_table
+```
+
 
 ## Annotation
 ```{r AnnotationDb}
+org.Hs.eg.db
+?mapIds
 
+keytypes(org.Hs.eg.db)
 
+count_matrix %>% unique()
+
+mapped_id <- mapIds(org.Hs.eg.db, count_matrix$ensembl_gene_id, "SYMBOL", "ENSEMBL")
+
+mapped_id <- mapped_id %>% as.data.frame() %>% tibble::rownames_to_column("ensembl_gene_id") %>% rename(SYMBOL = ".")
 ```
 
 ```{r biomaRt}
+ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
 
+listAttributes(ensembl)
+
+biomart_list <- getBM(filter = "ensembl_gene_id", 
+                      attributes = c("ensembl_gene_id", "hgnc_symbol", "transcript_biotype", 
+                                     "description"),
+                      values = count_matrix$ensembl_gene_id, mart = ensembl)
+
+biomart_list_filtered <- biomart_list %>% filter(transcript_biotype %in% c("protein_coding",
+                                                                           "miRNA"))
+
+count_matrix_filtered <- count_matrix %>% filter(ensembl_gene_id %in% biomart_list_filtered$ensembl_gene_id)
 ```
 ## Outputs
+
 
 ```{r}
 write.csv(count_matrix_filtered, "03_outputs/01_count_matrix_filtered.csv", row.names = FALSE)

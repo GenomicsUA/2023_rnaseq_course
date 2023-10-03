@@ -17,7 +17,7 @@ output:
       collapsed: yes
       smooth_scroll: yes
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ## Setup
@@ -50,22 +50,43 @@ metadata_table <- read.csv("01_datasets/metadata.csv", row.names = 1)
 ## PCA
 
 ```{r pca-raw}
+pca_calculated <- pca(count_matrix, metadata = metadata_table, removeVar = 0.1)
 
+biplot(pca_calculated, colby = "fibroblast_line", legendPosition = "right", lab = NULL)
+
+
+biplot(pca_calculated, colby = "treatment", legendPosition = "right", lab = NULL)
+metadata_table
+
+# eigenvector
+# eigenvalue
 ```
 
 ```{r normalization}
+dds <- DESeqDataSetFromMatrix(countData = count_matrix_filtered, colData = metadata_table,
+                              design = ~1)
 
 
+vsd <- vst(dds, blind = TRUE)
+
+counts_vst_filtered <- assay(vsd) %>% as.data.frame()
+
+counts_vst_filtered
 ```
 
 ```{r pca-normalized}
+pca_calculated <- pca(counts_vst_filtered, metadata = metadata_table, removeVar = 0.1)
 
+biplot(pca_calculated, colby = "fibroblast_line", legendPosition = "right", lab = NULL)
+
+biplot(pca_calculated, colby = "treatment", legendPosition = "right", lab = NULL)
+metadata_table
 
 
 ```
 
 ```{r pc-exploration}
-
+pairsplot(pca_calculated, colby = "treatment")
 ```
 
 ```{r}
