@@ -1,0 +1,88 @@
+---
+title: "RNA-seq course - week 2. Exploration"
+author: "Oleksandr Petrenko"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    code_folding: hide
+    df_print: paged
+    highlights: pygments
+    number_sections: yes
+    self_contained: yes
+    theme: default
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+## Setup
+
+```{r setup}
+knitr::opts_knit$set(root.dir = 'C:/Users/opetrenko/Documents/Rstudio/2023_rnaseq_course/week2')
+setwd("C:/Users/opetrenko/Documents/Rstudio/2023_rnaseq_course/week2")
+```
+
+```{r install-libraries}
+#if (!require("BiocManager", quietly = TRUE))
+#    install.packages("BiocManager")
+
+#BiocManager::install("PCAtools")
+#BiocManager::install("DESeq2")
+#install.packages("pheatmap")
+```
+
+```{r load-libraries-and-files}
+library(PCAtools)
+library(pheatmap)
+library(DESeq2)
+library(tidyverse)
+
+getwd()
+count_matrix <- read.csv("01_datasets/counts.csv", row.names = 1)
+count_matrix_filtered <- read.csv("03_outputs/01_count_matrix_filtered.csv", row.names = 1)
+metadata_table <- read.csv("01_datasets/metadata.csv", row.names = 1)
+```
+## PCA
+
+```{r pca-raw}
+
+```
+
+```{r normalization}
+
+
+```
+
+```{r pca-normalized}
+
+
+
+```
+
+```{r pc-exploration}
+
+```
+
+```{r}
+
+```
+
+
+## Hierarchical clustering
+
+```{r}
+
+```
+
+## Outputs
+
+```{r}
+ggsave("03_outputs/02_PCA.png", F1, device = "png")
+ggsave("03_outputs/02_clustering.png", F2, device = "png")
+```
+

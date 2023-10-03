@@ -1,0 +1,66 @@
+---
+title: "RNA-seq course - week 2. Gene annotation"
+author: "Oleksandr Petrenko"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    code_folding: hide
+    df_print: paged
+    highlights: pygments
+    number_sections: yes
+    self_contained: yes
+    theme: default
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+## Setup
+
+```{r setup}
+knitr::opts_knit$set(root.dir = 'C:/Users/opetrenko/Documents/Rstudio/2023_rnaseq_course/week2')
+setwd("C:/Users/opetrenko/Documents/Rstudio/2023_rnaseq_course/week2")
+```
+
+```{r install-libraries}
+#if (!require("BiocManager", quietly = TRUE))
+#    install.packages("BiocManager")
+
+#BiocManager::install("org.Hs.eg.db")
+#BiocManager::install("biomaRt")
+#install.packages("tidyverse")
+```
+
+```{r load-libraries-and-files}
+getwd()
+
+library(org.Hs.eg.db)
+library(biomaRt)
+library(dplyr)
+
+count_matrix <- read.csv("01_datasets/counts.csv")
+metadata_table <- counts <- read.csv("01_datasets/metadata.csv")
+
+```
+
+## Annotation
+```{r AnnotationDb}
+
+
+```
+
+```{r biomaRt}
+
+```
+## Outputs
+
+```{r}
+write.csv(count_matrix_filtered, "03_outputs/01_count_matrix_filtered.csv", row.names = FALSE)
+write.csv(biomart_list_filtered, "03_outputs/01_gene_names_mapped.csv", row.names = FALSE)
+```
+
