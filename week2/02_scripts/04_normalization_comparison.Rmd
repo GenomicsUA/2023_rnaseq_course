@@ -1,0 +1,61 @@
+---
+title: "RNA-seq course - week 2. Normalization comparison"
+author: "Oleksandr Petrenko"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    code_folding: hide
+    df_print: paged
+    highlights: pygments
+    number_sections: yes
+    self_contained: yes
+    theme: default
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+## Setup
+
+```{r setup}
+knitr::opts_knit$set(root.dir = '~/projects/2023_rnaseq_course/week2')
+setwd("~/projects/2023_rnaseq_course/week2")
+```
+
+
+```{r install-packages}
+#BiocManager::install("DEGreport")
+```
+
+
+```{r load-libraries-and-files}
+library(DESeq2)
+library(tidyverse)
+
+getwd()
+count_matrix_filtered <- read.csv("03_outputs/01_count_matrix_filtered.csv", row.names = 1)
+metadata_table <- read.csv("01_datasets/metadata.csv", row.names = 1)
+genes_mapped <- read.csv("03_outputs/01_gene_names_mapped.csv")
+```
+
+
+## VST: what does it do?
+
+```{r}
+fibroblast_genes <- c("ENSG00000108821", # COL1A1
+                      "ENSG00000164692", # COL1A2
+                      "ENSG00000168542", # COL3A1
+                      "ENSG00000149591", # TAGLN
+                      "ENSG00000107796", # ACTA2
+                      "ENSG00000198467", # TPM2
+                      
+                      "ENSG00000001497", # LAS1L
+                      "ENSG00000000460", # C1orf112
+                      "ENSG00000001461" # NIPAL3
+                      ) 
+```

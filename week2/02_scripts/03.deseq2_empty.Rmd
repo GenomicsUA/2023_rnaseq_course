@@ -23,8 +23,8 @@ editor_options:
 ## Setup
 
 ```{r setup}
-knitr::opts_knit$set(root.dir = 'C:/Users/opetrenko/Documents/Rstudio/2023_rnaseq_course/week2')
-setwd("C:/Users/opetrenko/Documents/Rstudio/2023_rnaseq_course/week2")
+knitr::opts_knit$set(root.dir = '~/projects/2023_rnaseq_course/week2')
+setwd("~/projects/2023_rnaseq_course/week2")
 ```
 
 
@@ -35,8 +35,9 @@ setwd("C:/Users/opetrenko/Documents/Rstudio/2023_rnaseq_course/week2")
 
 ```{r load-libraries-and-files}
 library(DESeq2)
-library(tidyverse)
 library(DEGreport)
+library(tidyverse)
+library(EnhancedVolcano)
 
 getwd()
 count_matrix_filtered <- read.csv("03_outputs/01_count_matrix_filtered.csv", row.names = 1)
@@ -44,7 +45,7 @@ metadata_table <- read.csv("01_datasets/metadata.csv", row.names = 1)
 genes_mapped <- read.csv("03_outputs/01_gene_names_mapped.csv")
 ```
 
-## DESeq2 object
+## LRT
 
 ```{r}
 dds <- DESeqDataSetFromMatrix(countData = count_matrix_filtered, colData = metadata_table,
@@ -55,18 +56,10 @@ dds_lrt <- DESeq(dds, test = "LRT", reduced = ~ 1)
 
 ```{r}
 lrt_genes <- results(dds_lrt) %>% as.data.frame() %>% filter(padj < 0.01)
-```
-
-```{r}
 lrt_subset <- lrt_genes %>% arrange(padj) %>% head(n = 1000)
-```
-```{r}
 lrt_subset <- lrt_subset %>% tibble::rownames_to_column("X")
 ```
 
-```{r}
-lrt_subset
-```
 
 ```{r}
 matrix_lrt <- assay(dds_lrt)[lrt_subset$X, ]
@@ -76,7 +69,6 @@ matrix_lrt <- varianceStabilizingTransformation(matrix_lrt)
 
 ```{r}
 metadata_table$treatment <- as.factor(metadata_table$treatment)
-metadata_table
 degPatterns(matrix_lrt, metadata = metadata_table, time = "treatment", col = NULL)
 ```
 
@@ -84,18 +76,12 @@ degPatterns(matrix_lrt, metadata = metadata_table, time = "treatment", col = NUL
 ## які існують методи dimensionality reduction
 ## eigenvector & eigenvalue (PCA)
 
-## VST (noramlization)
+## VST (normalization)
 ```
 
-```{r}
+## Wald
+https://hbctraining.github.io/DGE_workshop_salmon/lessons/05_DGE_DESeq2_analysis2.html
 
-```
 
-```{r}
 
-```
-
-```{r}
-
-```
 
