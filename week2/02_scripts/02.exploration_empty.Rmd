@@ -23,8 +23,8 @@ editor_options:
 ## Setup
 
 ```{r setup}
-knitr::opts_knit$set(root.dir = 'C:/Users/opetrenko/Documents/Rstudio/2023_rnaseq_course/week2')
-setwd("C:/Users/opetrenko/Documents/Rstudio/2023_rnaseq_course/week2")
+knitr::opts_knit$set(root.dir = '/home/opetrenko/projects/2023_rnaseq_course/week2')
+setwd("/home/opetrenko/projects/2023_rnaseq_course/week2")
 ```
 
 ```{r install-libraries}
@@ -38,7 +38,7 @@ setwd("C:/Users/opetrenko/Documents/Rstudio/2023_rnaseq_course/week2")
 
 ```{r load-libraries-and-files}
 library(PCAtools)
-library(pheatmap)
+#library(pheatmap)
 library(DESeq2)
 library(tidyverse)
 
@@ -81,8 +81,6 @@ biplot(pca_calculated, colby = "fibroblast_line", legendPosition = "right", lab 
 
 biplot(pca_calculated, colby = "treatment", legendPosition = "right", lab = NULL)
 metadata_table
-
-
 ```
 
 ```{r pc-exploration}

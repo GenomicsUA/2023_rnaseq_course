@@ -17,7 +17,7 @@ output:
       collapsed: yes
       smooth_scroll: yes
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ## Setup
@@ -69,8 +69,23 @@ matrix_lrt <- varianceStabilizingTransformation(matrix_lrt)
 
 ```{r}
 metadata_table$treatment <- as.factor(metadata_table$treatment)
-degPatterns(matrix_lrt, metadata = metadata_table, time = "treatment", col = NULL)
+metadata_table$fibroblast_line <- as.factor(metadata_table$fibroblast_line)
+gene_clusters <- degPatterns(matrix_lrt, metadata = metadata_table, time = "fibroblast_line", col = NULL)
+gene_clusters
 ```
+```{r}
+results(dds_lrt) %>% as.data.frame() %>% filter(padj < 0.01)
+```
+
+
+```{r}
+cluster_1 <- gene_clusters$df %>% filter(cluster %in% 1)
+cluster_1
+tmp <- genes_mapped %>% filter(ensembl_gene_id %in% cluster_1$genes)
+
+tmp
+```
+
 
 ```{r}
 ## які існують методи dimensionality reduction
@@ -82,6 +97,93 @@ degPatterns(matrix_lrt, metadata = metadata_table, time = "treatment", col = NUL
 ## Wald
 https://hbctraining.github.io/DGE_workshop_salmon/lessons/05_DGE_DESeq2_analysis2.html
 
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = count_matrix_filtered, colData = metadata_table,
+                              design = ~fibroblast_line + treatment)
+
+dds <- DESeq(dds, test = "Wald")
+
+```
+
+```{r}
+resultsNames(dds)
+```
+```{r}
+res_adapalen_dmso <- results(dds, contrast = c("treatment", "tazarotene", "adapalene")) %>% as.data.frame() %>%   tibble::rownames_to_column("gene")
+
+tmp <- genes_mapped %>% filter(ensembl_gene_id %in% res_adapalen_dmso$gene) %>% rename(gene = ensembl_gene_id)
+
+res_adapalen_dmso_significant <- left_join(res_adapalen_dmso, tmp, by = "gene") %>% select(-gene) %>% rename(gene = hgnc_symbol)
+
+res_adapalen_dmso_significant
+```
+```{r}
+EnhancedVolcano(res_adapalen_dmso_significant,
+                lab = res_adapalen_dmso_significant$gene,
+                x = "log2FoldChange",
+                y = "padj",
+                title = "Tazaroten vs Adapalene",
+                pCutoff = 0.01,
+                FCcutoff = 1.5,
+                ylim = c(-2, 100))
+```
+
+```{r}
+res_adapalen_dmso <- lfcShrink(dds, type = "ashr", contrast = c("treatment", "adapalene", "DMSO"), svalue = TRUE) %>% as.data.frame() %>%   tibble::rownames_to_column("gene")
+
+tmp <- genes_mapped %>% filter(ensembl_gene_id %in% res_adapalen_dmso$gene) %>% rename(gene = ensembl_gene_id)
+
+res_adapalen_dmso_ashr <- left_join(res_adapalen_dmso, tmp, by = "gene") %>% select(-gene) %>% rename(gene = hgnc_symbol)
+```
+```{r}
+tmp <- genes_mapped %>% filter(ensembl_gene_id %in% res_adapalen_dmso$gene) %>% rename(gene = ensembl_gene_id)
+
+res_adapalen_dmso_ashr <- left_join(res_adapalen_dmso, tmp, by = "gene") %>% select(-gene) %>% rename(gene = hgnc_symbol)
+```
+```{r}
+res_adapalen_dmso_ashr %>% filter(svalue < 0.01 & (log2FoldChange > 1.5 | log2FoldChange < -1.5))
+```
+```{r}
+EnhancedVolcano(res_adapalen_dmso_ashr,
+                lab = res_adapalen_dmso_ashr$gene,
+                x = "log2FoldChange",
+                y = "svalue",
+                title = "Adapalene vs DMSO",
+                pCutoff = 0.01,
+                FCcutoff = 1.5,
+                ylim = c(-2, 100))
+```
+```{r}
+res_tazaroten_dmso <- lfcShrink(dds, type = "ashr", contrast = c("treatment", "tazarotene", "DMSO"), svalue = TRUE) %>% as.data.frame() %>%tibble::rownames_to_column("gene")
+
+tmp <- genes_mapped %>% filter(ensembl_gene_id %in% res_tazaroten_dmso$gene) %>% rename(gene = ensembl_gene_id)
+
+res_tazaroten_dmso_ashr <- left_join(res_tazaroten_dmso, tmp, by = "gene") %>% select(-gene) %>% rename(gene = hgnc_symbol)
+```
+
+```{r}
+res_adapalen_dmso_up <- res_adapalen_dmso_ashr %>% filter(svalue < 0.01 & log2FoldChange > 1.5)
+res_adapalen_dmso_down <- res_adapalen_dmso_ashr %>% filter(svalue < 0.01 & log2FoldChange < -1.5)
+
+res_tazarotene_dmso_up <- res_tazaroten_dmso_ashr %>% filter(svalue < 0.01 & log2FoldChange > 1.5)
+res_tazarotene_dmso_down <- res_tazaroten_dmso_ashr %>% filter(svalue < 0.01 & log2FoldChange < -1.5)
+```
+
+```{r}
+res_adapalen_dmso_up
+```
 
 
+```{r}
+venn_list <- list("adapalen_down" = res_adapalen_dmso_down$gene,
+                  "adapalen_up" = res_adapalen_dmso_up$gene,
+                  
+                  "tazarotene_up" = res_tazarotene_dmso_up$gene,
+                  "tazarotene_down" = res_tazarotene_dmso_down$gene
+                  )
+```
 
+```{r}
+library(ggvenn)
+ggvenn(venn_list)
+```

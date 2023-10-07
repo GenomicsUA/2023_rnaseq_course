@@ -4,3 +4,4 @@ renv/*
 *.Rproj
 .Rprofile
 .Rhistory
+.RData

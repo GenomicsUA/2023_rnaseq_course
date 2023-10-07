@@ -39,8 +39,10 @@ library(tidyverse)
 
 getwd()
 count_matrix_filtered <- read.csv("03_outputs/01_count_matrix_filtered.csv", row.names = 1)
-metadata_table <- read.csv("01_datasets/metadata.csv", row.names = 1)
-genes_mapped <- read.csv("03_outputs/01_gene_names_mapped.csv")
+```
+
+```{r}
+count_matrix_filtered
 ```
 
 
@@ -59,3 +61,74 @@ fibroblast_genes <- c("ENSG00000108821", # COL1A1
                       "ENSG00000001461" # NIPAL3
                       ) 
 ```
+
+```{r}
+count_matrix_filtered[fibroblast_genes,]
+```
+
+```{r}
+a <- ggplot(count_matrix_filtered) + geom_histogram(aes(x = GSM6214563), stat = "bin", bins = 200) +
+        xlab("Raw expression counts") + 
+        ylab("Number of genes")
+  
+```
+```{r}
+counts_mean_var <- count_matrix_filtered %>% 
+  mutate(row = row_number()) %>%
+  tidyr::pivot_longer(-row) %>%
+  group_by(row) %>%
+  summarize(mean = mean(value),
+            var = var(value)) %>%
+  bind_cols(count_matrix_filtered, .) %>%
+  select(mean, var) %>%
+  tibble::rownames_to_column("gene")
+```
+
+```{r}
+ggplot(counts_mean_var) + geom_point(aes(x = mean, y = var)) +
+                          scale_y_log10() +
+                          scale_x_log10() +
+                          geom_abline(intercept = 0, slope = 1, color = "red")
+```
+
+```{r}
+counts_vst <- varianceStabilizingTransformation(count_matrix_filtered %>% as.matrix())
+```
+
+```{r}
+counts_vst[fibroblast_genes, ] %>% as.data.frame()
+```
+
+```{r}
+b <- ggplot(counts_vst %>% as.data.frame() %>% filter(GSM6214563 > 5)) + 
+        geom_histogram(aes(x = GSM6214563), stat = "bin", bins = 200) +
+        xlab("Raw expression counts") + 
+        ylab("Number of genes")
+  
+```
+
+```{r}
+a
+b
+```
+
+```{r}
+vst_mean_var <- counts_vst %>% as.data.frame() %>%
+  mutate(row = row_number()) %>%
+  tidyr::pivot_longer(-row) %>%
+  group_by(row) %>%
+  summarize(mean = mean(value),
+            var = var(value)) %>%
+  bind_cols(counts_vst, .) %>%
+  select(mean, var) %>%
+  tibble::rownames_to_column("gene")
+```
+
+
+```{r}
+ggplot(vst_mean_var) + geom_point(aes(x = mean, y = var)) +
+                          scale_y_log10() +
+                          scale_x_log10() +
+                          geom_abline(intercept = 0, slope = 1, color = "red")
+```
+
