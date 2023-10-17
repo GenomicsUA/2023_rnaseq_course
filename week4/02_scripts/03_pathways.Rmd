@@ -17,7 +17,7 @@ output:
       collapsed: yes
       smooth_scroll: yes
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ## Setup
@@ -39,5 +39,43 @@ BiocManager::install("biomaRt")
 ```{r}
 library(pathview)
 library(biomaRt)
+```
+
+```{r}
+adapelene_dmso <- read.csv("01_datasets/02_results_adapalene_dmso.csv")
+adapelene_dmso
+```
+
+```{r}
+ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+```
+```{r}
+listAttributes(ensembl) %
+```
+
+
+```{r}
+biomart_list <- getBM(filter = "hgnc_symbol", 
+                      attributes = c("hgnc_symbol", "entrezgene_id"),
+                      values = adapelene_dmso$X, mart = ensembl)
+```
+```{r}
+adapelene_dmso <- left_join(adapelene_dmso %>% rename(hgnc_symbol = X), biomart_list, by = "hgnc_symbol")
+```
+
+```{r}
+adapelene_dmso
+```
+
+
+```{r}
+logFC <- adapelene_dmso$log2FoldChange
+names(logFC) <- adapelene_dmso$entrezgene_id
+```
+```{r}
+pathview(gene.data = logFC, 
+         pathway.id = "hsa04310", 
+         species = "hsa", 
+         kegg.native = T)
 ```
 

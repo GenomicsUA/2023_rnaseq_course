@@ -42,5 +42,71 @@ adapelene_dmso <- read.csv("01_datasets/02_results_adapalene_dmso.csv")
 tazarotene_dmso <- read.csv("01_datasets/02_results_tazarotene_dmso.csv")
 ```
 
+```{r}
+a_d_up <- adapelene_dmso %>% filter(padj < 0.05, log2FoldChange > 1.5)
+a_d_down <- adapelene_dmso %>% filter(padj < 0.05, log2FoldChange < -1.5)
 
+t_d_up <- tazarotene_dmso %>% filter(padj < 0.05, log2FoldChange > 1.5)
+t_d_down <- tazarotene_dmso %>% filter(padj < 0.05, log2FoldChange < -1.5)
+
+```
+
+```{r}
+setEnrichrSite("Enrichr")
+```
+```{r}
+dbs <- listEnrichrDbs()
+dbs <- c("MSigDB_Hallmark_2020", "Reactome_2022", "WikiPathways_2019_Human")
+```
+
+
+```{r}
+a_d_up_ora <- enrichr(a_d_up$X, dbs)
+
+
+a_d_down_ora <- enrichr(a_d_down$X, dbs)
+
+t_d_up_ora <- enrichr(t_d_up$X, dbs)
+
+
+t_d_down_ora <- enrichr(t_d_down$X, dbs)
+
+```
+
+
+```{r}
+a_d_up_ora_sig <- a_d_up_ora$WikiPathways_2019_Human %>% 
+              filter(Adjusted.P.value < 0.05) %>% arrange(desc(Combined.Score))
+
+a_d_down_ora_sig <- a_d_down_ora$WikiPathways_2019_Human %>% 
+              filter(Adjusted.P.value < 0.05) %>% arrange(desc(Combined.Score))
+
+t_d_up_ora_sig <- t_d_up_ora$WikiPathways_2019_Human %>% 
+              filter(Adjusted.P.value < 0.05) %>% arrange(desc(Combined.Score))
+
+t_d_up_ora_sig <- t_d_up_ora$WikiPathways_2019_Human %>% 
+              filter(Adjusted.P.value < 0.05) %>% arrange(desc(Combined.Score))
+```
+
+
+```{r}
+source("02_scripts/0_functions.R")
+```
+
+```{r}
+a_d_up_ora_sig <- dataframe_to_enrichr(a_d_up_ora_sig)
+
+t_d_up_ora_sig <- dataframe_to_enrichr(t_d_up_ora_sig)
+```
+```{r}
+ggplot(a_d_up_ora_sig, aes(x = reorder(Term, Gene_number),
+                           y = Gene_number,
+                           fill = -log(Adjusted.P.value, base = 10))) +
+  geom_bar(stat = "identity", width = 0.5, alpha = 0.8) + coord_flip()
+
+ggplot(t_d_up_ora_sig, aes(x = reorder(Term, Gene_number),
+                           y = Gene_number,
+                           fill = -log(Adjusted.P.value, base = 10))) +
+  geom_bar(stat = "identity", width = 0.5, alpha = 0.8) + coord_flip()
+```
 

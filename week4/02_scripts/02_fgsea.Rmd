@@ -17,7 +17,7 @@ output:
       collapsed: yes
       smooth_scroll: yes
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ## Setup
@@ -39,5 +39,37 @@ BiocManager::install("fgsea")
 ```{r}
 library(fgsea)
 library(tidyverse)
+```
+
+```{r}
+adapelene_dmso <- read.csv("01_datasets/02_results_adapalene_dmso.csv")
+tazarotene_dmso <- read.csv("01_datasets/02_results_tazarotene_dmso.csv")
+getwd()
+hallmark <- gmtPathways("01_datasets/h.all.v2023.1.Hs.symbols.gmt")
+```
+
+```{r}
+adapelene_dmso <- adapelene_dmso %>% dplyr::filter(!is.na(padj)) %>% dplyr::filter(!is.na(log2FoldChange))
+```
+
+
+```{r}
+ranked_a_d <- adapelene_dmso %>% mutate(rank = (log2FoldChange * abs(-log10(padj)))) %>% 
+  select(X, rank) %>% tibble::deframe()
+```
+
+```{r}
+library(stats)
+```
+
+
+```{r}
+fgseaRes_a_d <- fgsea(pathways = hallmark, stats = ranked_a_d)
+```
+
+
+
+```{r}
+fgseaRes_a_d
 ```
 

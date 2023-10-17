@@ -17,14 +17,14 @@ output:
       collapsed: yes
       smooth_scroll: yes
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ## Setup
 
 ```{r setup}
-knitr::opts_knit$set(root.dir = '~/projects/2023_rnaseq_course/week2')
-setwd("~/projects/2023_rnaseq_course/week2")
+knitr::opts_knit$set(root.dir = '~/Rstudio/2023_rnaseq_course/week2')
+setwd("~/Rstudio/2023_rnaseq_course/week2")
 ```
 
 
@@ -108,14 +108,17 @@ dds <- DESeq(dds, test = "Wald")
 ```{r}
 resultsNames(dds)
 ```
+
 ```{r}
-res_adapalen_dmso <- results(dds, contrast = c("treatment", "tazarotene", "adapalene")) %>% as.data.frame() %>%   tibble::rownames_to_column("gene")
+res_adapalen_dmso <- results(dds, contrast = c("treatment", "adapalene", "DMSO")) %>% as.data.frame() %>% tibble::rownames_to_column("gene")
 
 tmp <- genes_mapped %>% filter(ensembl_gene_id %in% res_adapalen_dmso$gene) %>% rename(gene = ensembl_gene_id)
 
+tmp
+
 res_adapalen_dmso_significant <- left_join(res_adapalen_dmso, tmp, by = "gene") %>% select(-gene) %>% rename(gene = hgnc_symbol)
 
-res_adapalen_dmso_significant
+results <- res_adapalen_dmso_significant %>% distinct(gene, .keep_all = TRUE) %>% tibble::column_to_rownames("gene")
 ```
 ```{r}
 EnhancedVolcano(res_adapalen_dmso_significant,
@@ -129,11 +132,12 @@ EnhancedVolcano(res_adapalen_dmso_significant,
 ```
 
 ```{r}
-res_adapalen_dmso <- lfcShrink(dds, type = "ashr", contrast = c("treatment", "adapalene", "DMSO"), svalue = TRUE) %>% as.data.frame() %>%   tibble::rownames_to_column("gene")
+res_adapalen_dmso <- lfcShrink(dds, type = "ashr", contrast = c("treatment", "adapalene", "DMSO")) %>% as.data.frame() %>% tibble::rownames_to_column("gene")
 
 tmp <- genes_mapped %>% filter(ensembl_gene_id %in% res_adapalen_dmso$gene) %>% rename(gene = ensembl_gene_id)
 
-res_adapalen_dmso_ashr <- left_join(res_adapalen_dmso, tmp, by = "gene") %>% select(-gene) %>% rename(gene = hgnc_symbol)
+res_adapalen_dmso_ashr <- left_join(res_adapalen_dmso, tmp, by = "gene") %>% select(-gene) %>% rename(gene = hgnc_symbol) %>% distinct(gene, .keep_all = TRUE) %>% tibble::column_to_rownames("gene")
+res_adapalen_dmso_ashr
 ```
 ```{r}
 tmp <- genes_mapped %>% filter(ensembl_gene_id %in% res_adapalen_dmso$gene) %>% rename(gene = ensembl_gene_id)
@@ -184,6 +188,6 @@ venn_list <- list("adapalen_down" = res_adapalen_dmso_down$gene,
 ```
 
 ```{r}
-library(ggvenn)
-ggvenn(venn_list)
+write.csv(res_adapalen_dmso_ashr, "03_outputs/results_tazarotene_dmso_ashr.csv")
+getwd()
 ```
