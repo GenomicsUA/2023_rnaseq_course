@@ -1,0 +1,43 @@
+---
+title: "RNA-seq course - week 4. Hypergeometric tests"
+author: "Oleksandr Petrenko"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    code_folding: hide
+    df_print: paged
+    highlights: pygments
+    number_sections: yes
+    self_contained: yes
+    theme: default
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+## Setup
+
+```{r setup}
+knitr::opts_knit$set(root.dir = '~/Rstudio/2023_rnaseq_course/week4')
+setwd("~/Rstudio/2023_rnaseq_course/week4")
+```
+
+# for plant folks: http://systemsbiology.cau.edu.cn/PlantGSEA/download.php
+
+```{r install-packages}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("fgsea")
+```
+
+```{r}
+library(fgsea)
+library(tidyverse)
+```
+
