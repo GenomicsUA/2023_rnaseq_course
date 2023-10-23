@@ -85,7 +85,7 @@ sim_nb <- data.frame(x = 0:20, prob = dnbinom(x = 0:20, size = r, prob = p)) %>%
 # NB: factor
 
 sim_nb %>%
-ggplot(aes(x = factor(x), y = prob, fill = Failures)) +
+ggplot(aes(x = x, y = prob, fill = Failures)) +
   geom_col() +
   geom_text(
     aes(label = round(prob,2), y = prob + 0.01),

@@ -64,7 +64,9 @@ opts_chunk[["set"]](
 p <- 0.5
 n <- 25
 bootstrap_n <- 10000
-binomial_sim <- do(bootstrap_n) * nflip(p = p, n = n)
+
+binomial_sim <- mosaic::do(bootstrap_n) * nflip(p = p, n = n)
+
 ggplot(binomial_sim) + 
     geom_histogram(aes(x=nflip), binwidth = 1, boundary = 5) +
     geom_vline(xintercept = mean(binomial_sim$nflip), linetype = "dashed", color = "red") +
@@ -141,7 +143,7 @@ sum(binomial_sim >= rare_event) / bootstrap_n
 - розподіл тестової статистики за припущення H0
 
 ```{r}
-sim_cancer = do(10000)*nflip(n = 80515, prob = 0.00047)
+sim_cancer <- do(10000)*nflip(n = 80515, prob = 0.00047)
 ggplot(sim_cancer) + 
   geom_histogram(aes(x = nflip), binwidth = 1)
 ```
