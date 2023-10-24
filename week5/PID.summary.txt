@@ -1,0 +1,2 @@
+Total intervals:  3300
+Total bp:  605568
