@@ -22,7 +22,7 @@ library(tidyverse)
 # grch38 by default
 # use host=grch37.ensembl.org for grch37 reference
 init_mart_human <- function(host = "https://useast.ensembl.org"){
-    #host <- "https://grch37.ensembl.org"
+    host <- "https://grch37.ensembl.org"
     mart <- useMart(biomart = "ENSEMBL_MART_ENSEMBL", host = host)
     mart <- useDataset(mart, dataset = "hsapiens_gene_ensembl")
     return(mart)
@@ -36,7 +36,7 @@ tutorial_init_mart_human <- function(){
     #library(bedr)
 
     listMarts()
-    mart <- useMart(biomart = "ENSEMBL_MART_ENSEMBL", host = "useast.ensembl.org")
+    mart <- useMart(biomart = "ENSEMBL_MART_ENSEMBL", host = "https://useast.ensembl.org")
     datasets <- listDatasets(mart)
     mart <- useDataset(mart, dataset = "hsapiens_gene_ensembl")
     attributes <- listAttributes(mart)
@@ -45,14 +45,14 @@ tutorial_init_mart_human <- function(){
     chromosomes <- getBM(attributes = c("chromosome_name"), mart = mart)
 
     #, "ensembl_exon_id"
-    #, "gene_biotype"),
-    genes <- getBM(attributes = c("ensembl_gene_id", "external_gene_name", "ensembl_exon_id",
+    #, "gene_biotype"), "ensembl_exon_id",
+    genes <- getBM(attributes = c("ensembl_gene_id", "external_gene_name",  "ensembl_exon_id",
                                   "chromosome_name", "description",
                                   "start_position", "end_position", "gene_biotype"),
                   filters = c("chromosome_name"),
                   values = list("10"),
                   mart = mart) %>% mutate (external_gene_name = na_if(external_gene_name, "")) %>%
-                  drop_na(external_gene_name)
+                 drop_na(external_gene_name)
 
     genes$len <- genes$end_position - genes$start_position + 1
 
