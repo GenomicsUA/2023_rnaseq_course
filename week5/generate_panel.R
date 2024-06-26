@@ -83,7 +83,7 @@ get_all_exon_coordinates <- function(ensembl_gene_id, mart, genes){
     # ensembl_gene_id <- "ENSG00000171759" #  two entrez ids
     # ensembl_gene_id <- "ENSG00000211899" # no refseq transcript no entrez
     # ensembl_gene_id <- "ENSG00000229164" 
-    # ensembl_gene_id <- "ENSG00000270141"
+    ensembl_gene_id <- "ENSG00000270141"
   
     # print(ensembl_gene_id)
     genes_info <- as_tibble(getBM(attributes = c("chromosome_name",
